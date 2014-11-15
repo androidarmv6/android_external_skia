@@ -32,6 +32,7 @@ static void S32A_D565_Opaque(uint16_t* SK_RESTRICT dst,
     SkASSERT(255 == alpha);
 
     asm volatile (
+                  __SKIA_SWITCH_TO_ARM
                   "1:                                   \n\t"
                   "ldr     r3, [%[src]], #4             \n\t"
                   "cmp     r3, #0xff000000              \n\t"
@@ -97,6 +98,7 @@ static void S32A_D565_Opaque(uint16_t* SK_RESTRICT dst,
                   "add     %[dst], %[dst], #2           \n\t"
                   "bne     1b                           \n\t"
                   "4:                                   \n\t"
+                  __SKIA_SWITCH_TO_THUMB
                   : [dst] "+r" (dst), [src] "+r" (src), [count] "+r" (count)
                   :
                   : "memory", "cc", "r3", "r4", "r5", "r6", "r7", "ip"
@@ -110,6 +112,7 @@ static void S32A_Opaque_BlitRow32_arm(SkPMColor* SK_RESTRICT dst,
     SkASSERT(255 == alpha);
 
     asm volatile (
+                  __SKIA_SWITCH_TO_ARM
                   "cmp    %[count], #0               \n\t" /* comparing count with 0 */
                   "beq    3f                         \n\t" /* if zero exit */
 
@@ -188,6 +191,7 @@ static void S32A_Opaque_BlitRow32_arm(SkPMColor* SK_RESTRICT dst,
                   /* ----------------- */
 
                   "3:                                \n\t" /* <exit> */
+                  __SKIA_SWITCH_TO_THUMB
                   : [dst] "+r" (dst), [src] "+r" (src), [count] "+r" (count)
                   :
                   : "cc", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "ip", "memory"
@@ -201,6 +205,7 @@ void S32A_Blend_BlitRow32_arm(SkPMColor* SK_RESTRICT dst,
                               const SkPMColor* SK_RESTRICT src,
                               int count, U8CPU alpha) {
     asm volatile (
+                  __SKIA_SWITCH_TO_ARM
                   "cmp    %[count], #0               \n\t" /* comparing count with 0 */
                   "beq    3f                         \n\t" /* if zero exit */
 
@@ -328,6 +333,7 @@ void S32A_Blend_BlitRow32_arm(SkPMColor* SK_RESTRICT dst,
                   /* ----------------- */
 
                   "3:                                \n\t" /* <exit> */
+                  __SKIA_SWITCH_TO_THUMB
                   : [dst] "+r" (dst), [src] "+r" (src), [count] "+r" (count), [alpha] "+r" (alpha)
                   :
                   : "cc", "r4", "r5", "r6", "r7", "r8", "r9", "r10", "r11", "r12", "memory"
@@ -357,8 +363,13 @@ static const SkBlitRow::Proc sk_blitrow_platform_565_procs_arm[] = {
 static const SkBlitRow::Proc32 sk_blitrow_platform_32_procs_arm[] = {
     NULL,   // S32_Opaque,
     NULL,   // S32_Blend,
+#if defined(__thumb2__) || !defined(__thumb__) // if ARM mode or Thumb2 mode
     S32A_Opaque_BlitRow32_arm,   // S32A_Opaque,
     S32A_Blend_BlitRow32_arm     // S32A_Blend
+#else
+    NULL,
+    NULL
+#endif
 };
 
 #endif // USE_ARM_CODE
